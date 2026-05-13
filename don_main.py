@@ -95,20 +95,23 @@ def transcribir(archivo="audio.wav"):
 
 
 def detectar_palabra_clave():
-    os.system("rm -f escucha.wav")
-    os.system("termux-microphone-record -f escucha.wav -l 3 -r 16000")
+    archivo = f"escucha_{int(time.time())}.wav"
+    os.system(f"termux-microphone-record -f {archivo} -l 3 -r 16000")
     time.sleep(4.5)
     try:
-        with open("escucha.wav", "rb") as f:
+        with open(archivo, "rb") as f:
             resultado = client.audio.transcriptions.create(
-                file=("escucha.wav", f.read()),
+                file=(archivo, f.read()),
                 model="whisper-large-v3",
                 language="es"
             )
         texto = resultado.text.lower()
         print(f"  [escucha]: {texto}")
+        os.system(f"rm -f {archivo}")
         return PALABRA_CLAVE in texto
-    except:
+    except Exception as e:
+        print(f"Error: {e}")
+        os.system(f"rm -f {archivo}")
         return False
 
 # ─── IA ──────────────────────────────────────────────────
