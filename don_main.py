@@ -94,8 +94,9 @@ def transcribir(archivo="audio.wav"):
 
 
 def detectar_palabra_clave():
-    """Escucha 3 segundos y detecta si dijeron la palabra clave"""
-    grabar_audio(segundos=3, archivo="escucha.wav")
+    os.system("rm -f escucha.wav")
+    os.system("termux-microphone-record -f escucha.wav -l 3 -r 16000")
+    time.sleep(4.5)
     try:
         with open("escucha.wav", "rb") as f:
             resultado = client.audio.transcriptions.create(
