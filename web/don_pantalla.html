@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Don</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@100;300;400&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    width:100vw; height:100vh; overflow:hidden;
+    background:linear-gradient(160deg,#0a0e2a 0%,#0d1f4a 40%,#0a2a4a 70%,#061428 100%);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-family:'Raleway',sans-serif; color:white; cursor:none; user-select:none;
+    transition:background 1s ease;
+  }
+  body.alerta-baja { background:linear-gradient(160deg,#1a0e00 0%,#2a1a00 40%,#1a1200 70%,#0a0800 100%); }
+  body.alerta-critica {
+    background:linear-gradient(160deg,#1a0000 0%,#2a0000 40%,#1a0000 70%,#0a0000 100%);
+    animation:pulso-critico 2s infinite;
+  }
+  @keyframes pulso-critico { 0%,100%{filter:brightness(1)} 50%{filter:brightness(1.2)} }
+
+  #hora {
+    position:absolute; top:48px;
+    font-size:4.5rem; font-weight:100; letter-spacing:6px;
+    color:rgba(255,255,255,0.85); text-shadow:0 0 40px rgba(100,160,255,0.4);
+  }
+  #fecha {
+    position:absolute; top:148px;
+    font-size:0.85rem; font-weight:300; letter-spacing:4px;
+    text-transform:uppercase; color:rgba(255,255,255,0.35);
+  }
+
+  /* BATERÍA */
+  #bateria-wrap {
+    position:absolute; top:54px; right:22px;
+    display:flex; align-items:center; gap:5px;
+  }
+  #bat-texto { font-size:0.62rem; letter-spacing:1px; color:rgba(255,255,255,0.3); transition:color .5s; }
+  #bat-cuerpo {
+    width:26px; height:13px;
+    border:1.5px solid rgba(255,255,255,0.25); border-radius:3px;
+    position:relative; transition:border-color .5s;
+  }
+  #bat-cuerpo::after {
+    content:''; position:absolute; right:-4px; top:50%; transform:translateY(-50%);
+    width:3px; height:6px; background:rgba(255,255,255,0.25); border-radius:0 2px 2px 0;
+  }
+  #bat-fill {
+    position:absolute; left:1px; top:1px; bottom:1px;
+    border-radius:1.5px; background:rgba(100,255,180,0.75);
+    transition:width 1s ease, background 1s;
+  }
+  #bat-rayo { font-size:0.65rem; display:none; animation:rayo 1.5s infinite; }
+  @keyframes rayo { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  #nombre {
+    position:absolute; top:50%; transform:translateY(-120px);
+    font-size:1rem; font-weight:300; letter-spacing:10px;
+    text-transform:uppercase; color:rgba(255,255,255,0.22);
+  }
+  #canvas { position:absolute; top:50%; transform:translateY(-50%); width:100%; height:200px; }
+  #estado {
+    position:absolute; top:calc(50% + 82px);
+    font-size:0.72rem; font-weight:300; letter-spacing:5px;
+    text-transform:uppercase; color:rgba(255,255,255,0.28); transition:color .5s;
+  }
+  #estado.activo { color:rgba(100,200,255,0.75); text-shadow:0 0 14px rgba(100,200,255,0.4); }
+
+  #aviso-bat {
+    position:absolute; bottom:58px;
+    background:rgba(255,120,0,0.12); border:1px solid rgba(255,130,0,0.3);
+    border-radius:20px; padding:7px 18px;
+    font-size:0.65rem; letter-spacing:2px; color:rgba(255,180,80,0.85);
+    display:none;
+  }
+  #aviso-bat.critica {
+    background:rgba(255,20,20,0.12); border-color:rgba(255,40,40,0.35);
+    color:rgba(255,110,110,0.9); animation:pulso-aviso 1.5s infinite;
+  }
+  @keyframes pulso-aviso { 0%,100%{opacity:1} 50%{opacity:.45} }
+
+  #disclaimer {
+    position:absolute; bottom:22px;
+    font-size:0.6rem; font-weight:300; letter-spacing:1.5px;
+    color:rgba(255,255,255,0.16); text-align:center; padding:0 40px;
+  }
+  .particula {
+    position:absolute; border-radius:50%; background:rgba(100,180,255,0.35);
+    animation:flotar linear infinite; pointer-events:none;
+  }
+  @keyframes flotar {
+    0%{transform:translateY(100vh);opacity:0} 10%{opacity:.7}
+    90%{opacity:.2} 100%{transform:translateY(-20px);opacity:0}
+  }
+</style>
+</head>
+<body>
+
+<div id="hora">--:--</div>
+<div id="fecha"></div>
+
+<div id="bateria-wrap">
+  <span id="bat-texto">--%</span>
+  <div id="bat-cuerpo"><div id="bat-fill" style="width:80%"></div></div>
+  <span id="bat-rayo">⚡</span>
+</div>
+
+<div id="nombre">D O N</div>
+<canvas id="canvas"></canvas>
+<div id="estado">escuchando...</div>
+<div id="aviso-bat"></div>
+<div id="disclaimer">Don puede cometer errores. Verificá información importante antes de actuar.</div>
+
+<script>
+// RELOJ
+function tick() {
+  const n = new Date();
+  document.getElementById('hora').textContent =
+    String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+  const dias  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  document.getElementById('fecha').textContent =
+    `${dias[n.getDay()]}, ${n.getDate()} de ${meses[n.getMonth()]}`;
+}
+tick(); setInterval(tick, 1000);
+
+// BATERÍA
+function setBateria(nivel, cargando, alerta) {
+  const fill  = document.getElementById('bat-fill');
+  const texto = document.getElementById('bat-texto');
+  const rayo  = document.getElementById('bat-rayo');
+  const aviso = document.getElementById('aviso-bat');
+
+  texto.textContent   = nivel + '%';
+  rayo.style.display  = cargando ? 'inline' : 'none';
+  fill.style.width    = nivel + '%';
+
+  if (nivel > 30)      fill.style.background = 'rgba(100,255,180,0.75)';
+  else if (nivel > 15) fill.style.background = 'rgba(255,190,50,0.85)';
+  else                 fill.style.background = 'rgba(255,60,60,0.9)';
+
+  document.body.className = '';
+  aviso.style.display = 'none';
+  aviso.className = '';
+
+  if (!cargando) {
+    if (alerta === 'critica') {
+      document.body.classList.add('alerta-critica');
+      aviso.textContent = '⚠  BATERÍA CRÍTICA — CONECTÁ EL CARGADOR';
+      aviso.className = 'critica';
+      aviso.style.display = 'block';
+    } else if (alerta === 'baja') {
+      document.body.classList.add('alerta-baja');
+      aviso.textContent = 'Batería baja — conectá el cargador';
+      aviso.style.display = 'block';
+    }
+  }
+}
+// Demo inicial
+setBateria(72, false, 'normal');
+
+// ONDAS
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d');
+let amp = 0, ampObj = 0, fase = 0;
+
+function resize() { canvas.width = window.innerWidth; canvas.height = 200; }
+resize(); window.addEventListener('resize', resize);
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  amp += (ampObj - amp) * 0.08;
+  const cy = canvas.height / 2;
+
+  [{a:.6,f:1,o:0,g:1.5},{a:.4,f:1.3,o:.8,g:1},{a:.25,f:.7,o:1.6,g:.7},{a:.15,f:1.7,o:2.4,g:.5}]
+  .forEach((c,i) => {
+    ctx.beginPath(); ctx.lineWidth = c.g;
+    const a = amp * c.a * (40 + i*8) + 4 + i*2;
+    for (let x = 0; x <= canvas.width; x += 2) {
+      const p = x / canvas.width;
+      const y = cy + Math.sin(p * Math.PI * 6 * c.f + fase + c.o) * a * Math.sin(p * Math.PI);
+      x === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+    const g = ctx.createLinearGradient(0,0,canvas.width,0);
+    g.addColorStop(0,  'rgba(30,100,255,0)');
+    g.addColorStop(.2, `rgba(80,160,255,${c.a*.8})`);
+    g.addColorStop(.5, `rgba(120,200,255,${c.a})`);
+    g.addColorStop(.8, `rgba(80,160,255,${c.a*.8})`);
+    g.addColorStop(1,  'rgba(30,100,255,0)');
+    ctx.strokeStyle = g; ctx.stroke();
+  });
+  fase += 0.03;
+  requestAnimationFrame(draw);
+}
+draw();
+
+// ESTADO
+const estadoEl = document.getElementById('estado');
+function setHablando(v) {
+  ampObj = v ? 1 : 0;
+  estadoEl.textContent = v ? 'hablando...' : 'escuchando...';
+  estadoEl.className   = v ? 'activo' : '';
+}
+
+// POLLING
+async function poll() {
+  try {
+    const d = await (await fetch('/estado')).json();
+    setHablando(d.hablando || false);
+    if (d.bateria !== undefined)
+      setBateria(d.bateria, d.cargando || false, d.alerta_bateria || 'normal');
+  } catch {}
+}
+setInterval(poll, 1000);
+
+// Demo ondas
+let demo = true;
+(function loop() {
+  if (!demo) return;
+  setHablando(true);
+  setTimeout(() => { setHablando(false); setTimeout(loop, 2000+Math.random()*3000); },
+    1500+Math.random()*2000);
+})();
+
+// Partículas
+setInterval(() => {
+  const p = document.createElement('div');
+  p.className = 'particula';
+  p.style.left = Math.random()*100+'vw';
+  const s = 1+Math.random()*3; p.style.width=p.style.height=s+'px';
+  p.style.animationDuration = (8+Math.random()*12)+'s';
+  p.style.animationDelay    = (Math.random()*4)+'s';
+  document.body.appendChild(p);
+  setTimeout(()=>p.remove(), 20000);
+}, 600);
+</script>
+</body>
+</html>
