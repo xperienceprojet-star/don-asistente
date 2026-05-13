@@ -75,8 +75,9 @@ def _set_estado_pantalla(hablando: bool):
 # ─── AUDIO ───────────────────────────────────────────────
 
 def grabar_audio(segundos=DURACION_GRABACION, archivo="audio.wav"):
+    os.system(f"rm -f {archivo}")
     os.system(f"termux-microphone-record -f {archivo} -l {segundos} -r 16000")
-    time.sleep(segundos + 0.5)
+    time.sleep(segundos + 1.5)
 
 
 def transcribir(archivo="audio.wav"):
